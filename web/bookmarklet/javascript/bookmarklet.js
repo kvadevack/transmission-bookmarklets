@@ -5,54 +5,58 @@
 
 (function(){
 	var versionNum = "0.8";
-	var serverAddress = "127.0.0.1:9091";
-	
-	// Function will return cookie-string with google-analytics removed
-	function LipoCookie(){
+	var serverAddress = "http://yourserver.ip:port/";
+	function LipoCookie()
+	{
 		var sCookie ="";
-		// cookies are separated by semicolons and varied number of spaces
 		var aCookie = document.cookie.split(/;[\s\xA0]*/);
 		if (aCookie != ""){
-			for (var i=0; i < aCookie.length; i++){
-			// google crumbs begin with __utm or __; if not found then will return -1
-	    		if (aCookie[i].search(/(^__utm|^__qc)/) == -1){ 
-					sCookie = sCookie + aCookie[i] + '; ';
+			for (var i=0; i < aCookie.length; i++)
+			{
+				if (aCookie[i].search(/(^__utm|^__qc)/) == -1){
+					sCookie = sCookie + aCookie[i] + '';
 				}
 			}
 		}
-		// remove ending "; "
 		sCookie=sCookie.replace(/;\s+$/,"");
-		// if all cookies are google analytics, sCookie will be ""
-		// if no cookies are set, sCookie will also be "", but aCookie will be ""
-		return sCookie;	
+		return sCookie;
 	}
-	
 	var cookieString = LipoCookie();
 	var a=document.getElementsByTagName('a');
-	
-	for(var i=0,j=a.length;i<j;i++){
-		
-		// a[i].getAttribute('href') will return a relative path
-		var linkurl = a[i].href;
-		
-		// limit link changes to following matches
-		
-		// search for terms after last "/" ie. the file name : (.torrent)
-		var testUrl = linkurl.substring(linkurl.lastIndexOf('/') + 1, linkurl.length);
+	for(let i=0,j=a.length;i<j;i++){
+		let linkurl = a[i].href;var testUrl = linkurl.substring(linkurl.lastIndexOf('/') + 1, linkurl.length);
 		var testResult = testUrl.search(/(\.torrent$)/i);
-		// search for terms anywhere in url : (magnet link) (directories starting with: /get | /download | /dl)
 		if (testResult == -1){
 			var testResult = linkurl.search(/(magnet:\?|\/get|\/download|\/dl|\/torrent)/i);
 		}
-		
 		if (testResult != -1){
-			a[i].setAttribute('target','_blank');
-			a[i].setAttribute('href',"http://" + serverAddress + "/transmission/web/fetchtorrent.html?torrentlink=" + encodeURIComponent(linkurl) + "&cs=" + encodeURIComponent(cookieString) + "&version=" + versionNum );
-			var img=document.createElement('img');
-			img.setAttribute('class', 'new-window');
-			img.setAttribute('src','data:image/gif;base64,'+'R0lGODlhEAAMALMLAL66tBISEjExMdTQyBoaGjs7OyUlJWZmZgAAAMzMzP///////wAAAAAAAAAAAAAA'+'ACH5BAEAAAsALAAAAAAQAAwAAAQ/cMlZqr2Tps13yVJBjOT4gYairqohCTDMsu4iHHgwr7UA/LqdopZS'+'DBBIpGG5lBQH0GgtU9xNJ9XZ1cnsNicRADs=');
-			img.setAttribute('style','width:16px!important;height:12px!important;border:none!important;');
-			a[i].appendChild(img);
-		}
-	}
+				let httpRequest = new XMLHttpRequest();
+				httpRequest.open("GET", linkurl, true);
+				httpRequest.responseType = 'blob';
+				httpRequest.send();
+				httpRequest.onloadend = function() {
+						var httpResponse = httpRequest.response;
+						let reader = new window.FileReader();
+						reader.readAsDataURL(httpResponse);
+						reader.onloadend = function ()
+						{
+							base64data = reader.result;
+							base64data = base64data.replace('data:application/x-bittorrent;base64,','');
+							linkurl = base64data;
+							targetElement = a[i];
+							targetElement.setAttribute('target','_blank');
+							targetElement.setAttribute('href',serverAddress + "/transmission/web/fetchtorrent.html?torrentlink=" + linkurl + "&cs=" + encodeURIComponent(cookieString) + "&version=" + versionNum );
+							var img=document.createElement('img');
+							img.setAttribute('class', 'new-window');
+							img.setAttribute('src','data:image/gif;base64,'+'R0lGODlhEAAMALMLAL66tBISEjExMdTQyBoaGjs7OyUlJWZmZgAAAMzMzP///////wAAAAAAAAAAAAAA'+'ACH5BAEAAAsALAAAAAAQAAwAAAQ/cMlZqr2Tps13yVJBjOT4gYairqohCTDMsu4iHHgwr7UA/LqdopZS'+
+					'DBBIpGG5lBQH0GgtU9xNJ9XZ1cnsNicRADs=');
+							img.setAttribute('style','width:16px!important;height:12px!important;border:none!important;');
+							targetElement.appendChild(img);
+						}
+					}
+				}
+			}
+
+
+
 })();
