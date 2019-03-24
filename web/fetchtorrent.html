@@ -61,15 +61,16 @@ var versionNum;
 var downloadUrl;
 var cookieString;
 var sessionId;
+var data;
 
 // cross-site xmlhttprequest restrictions prevents incorporation of this javascript into the client-side bookmarklet, this server-side .html acts as a workaround
 
 // if you do NOT want to manually type in authentication then use the following url format:
 //   http://username:password@ip.address:port/this.html
 
-// parse URL parameters to array  
+// parse URL parameters to array
 // given http://localhost/this.html?name1="value1"&name2="value2"
-//   url.name1 will return "value1" 
+//   url.name1 will return "value1"
 
 // parameters should be encodeURIComponent to avoid confusion with ? or = within a value
 
@@ -81,7 +82,7 @@ var sessionId;
                 len = 0,
                 i = 0;
         url._location = location;
- 
+
         arrParams = query.split("&");
         len = arrParams.length
         for(i=0; i<len; i++){
@@ -91,40 +92,41 @@ var sessionId;
 
 
 function AddTorrent(downloadUrl, cookieString, versionNum) {
-	
+
 	// POST data can be obtained from "transmission-remote [options]--debug 2>&1" in Terminal.app
 	// example json_data for --add
 	//   '{"arguments":{"filename":"http://www.example.com/new.torrent"},"method":"torrent-add","tag":8}'
-		
+
 	if (!versionNum) {
 		versionNum = "0.0";
 	}
-	
+
 	document.getElementById('version_num').innerHTML = versionNum;
-	
+
 	if (!downloadUrl) {
 		alertDiag("ERROR: Download URL is undefined!");
 		return;
 		// downloadUrl = this.href;
 	}
-	
+
+	//Modification, downloadUrl contains Torrent stored in Base64 format
 	downloadUrl=decodeURIComponent(downloadUrl); //reencode foreign characters
-	downloadUrl=downloadUrl.replace(/\s/g,"%20"); //fix url with "spaces" without encoding foreign characters
 	
-	var data = JSON.stringify({arguments:{cookies:cookieString,filename:downloadUrl},method:"torrent-add",tag:8});
-	// {"arguments":{"cookieString":"pass_hash=1; member_id=2","filename":"http://me/download.php/58153"},"method":"torrent-add","tag":8}
-	
-	var httpRequest = new XMLHttpRequest();
+	data = JSON.stringify({arguments:{cookies:cookieString,metainfo:downloadUrl},method:"torrent-add",tag:8});
+
+
+	httpRequest = new XMLHttpRequest();
 	httpRequest.open("POST", "/transmission/rpc", true);
-		
+
 	if (sessionId) {
+	//	console.log(sessionId + ' session')
 		httpRequest.setRequestHeader("X-Transmission-Session-Id", sessionId);
 	}
-	
+
 	httpRequest.onreadystatechange = function() {
-	
+		//console.log('onreadStateChange');
 		if (httpRequest.readyState == 4) {
-			var httpResponse = httpRequest.responseText;			
+			var httpResponse = httpRequest.responseText;
 			try {
 				if (httpResponse.length > 0) {
 					if (httpRequest.status == 200) { // status OK
@@ -140,7 +142,10 @@ function AddTorrent(downloadUrl, cookieString, versionNum) {
 						}
 					}
 					else if (httpRequest.status == 409) { // need new session-id
+
 						sessionId = httpRequest.getResponseHeader("X-Transmission-Session-Id");
+						// console.log('affectation=' + sessionId);
+
 						AddTorrent(downloadUrl, cookieString, versionNum);
 					}
 					else if (httpRequest.status == 401) {
@@ -149,16 +154,16 @@ function AddTorrent(downloadUrl, cookieString, versionNum) {
 					else {
 						alertDiag("Unknown Http.Status: " + httpRequest.status);
 					}
-				} 
+				}
 				else {
 					alertDiag("ERROR: Empty response");
 				}
-			} 
-			catch (e) { 
+			}
+			catch (e) {
 				alertDiag("Unknown Error: " + e);
 			}
-		}		
-	}	
+		}
+	}
 	httpRequest.send(data);
 };
 
@@ -198,6 +203,7 @@ function alertDiag(responseDiag){
 		<center>
 			<p>Transmission-Add-Torrent-Bookmarklet - v<span id="version_num">0.0</span></p>
 			<p>Check <a target="_blank" href="https://github.com/bulljit/Transmission-Add-Torrent-Bookmarkelet">here</a> for updates.</p>
+
 		</center>
 	</h3>
 </body>
